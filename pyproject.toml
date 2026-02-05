@@ -1,0 +1,12 @@
+[project]
+name = "strands-farmers"
+version = "0.1.0"
+description = "Strands Agents with Portkey integration example"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "strands-agents>=1.24.0",
+    "strands-agents-tools",
+    "openai",
+    "portkey-ai",
+]
