@@ -1,8 +1,5 @@
 """
-Strands Agent with Portkey integration and multiple MCP servers.
-Supports:
-- Linear MCP (via Portkey API key)
-- GitHub MCP (via GitHub PAT)
+Strands Agent with Portkey integration and MCP server.
 """
 
 import os
@@ -10,14 +7,13 @@ import sys
 
 # Configuration
 PORTKEY_API_KEY = os.environ.get("PORTKEY_API_KEY", "")
-GITHUB_PAT = os.environ.get("GITHUB_PAT", "")
+MCP_API_KEY = os.environ.get("MCP_API_KEY", "")
 MODEL_SLUG = "@anthropic/claude-sonnet-4-5"
-LINEAR_MCP_URL = os.environ.get("LINEAR_MCP_URL", "")
-GITHUB_MCP_URL = os.environ.get("GITHUB_MCP_URL", "")
+MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "")
 
 
 def main():
-    """Run interactive Strands Agent with multiple MCP tools via Portkey."""
+    """Run interactive Strands Agent with MCP tools via Portkey."""
     print("\n🔮 Initializing Strands Agent...")
     print("  • Loading dependencies (this may take a moment)...")
     
@@ -38,9 +34,9 @@ def main():
                 "api_key": PORTKEY_API_KEY,
                 "base_url": PORTKEY_GATEWAY_URL,
                 "default_headers": createHeaders(
-                    trace_id="strands-multi-mcp-agent",
+                    trace_id="strands-mcp-agent",
                     metadata={
-                        "agent_type": "multi-mcp-integration",
+                        "agent_type": "mcp-integration",
                         "framework": "strands-agents"
                     }
                 )
@@ -52,63 +48,32 @@ def main():
             }
         )
 
-    def create_linear_mcp_transport():
-        """Create MCP transport for Linear server with Portkey auth."""
+    def create_mcp_transport():
+        """Create MCP transport via Portkey with auth forwarding."""
         return streamablehttp_client(
-            url=LINEAR_MCP_URL,
-            headers={
-                "x-portkey-api-key": PORTKEY_API_KEY
-            }
-        )
-
-    def create_github_mcp_transport():
-        """Create MCP transport for GitHub server (via Portkey with PAT forwarding)."""
-        return streamablehttp_client(
-            url=GITHUB_MCP_URL,
+            url=MCP_SERVER_URL,
             headers={
                 "x-portkey-api-key": PORTKEY_API_KEY,
-                "Authorization": f"Bearer {GITHUB_PAT}"
+                "Authorization": f"Bearer {MCP_API_KEY}"
             }
         )
 
     print("  • Connecting to Portkey Gateway...")
     model = create_model()
     
-    # Build list of MCP clients based on available config
-    mcp_clients = []
-    
-    # Linear MCP (always available if Portkey key is set)
-    print("  • Connecting to Linear MCP...")
-    linear_mcp = MCPClient(
-        transport_callable=create_linear_mcp_transport,
-        prefix="linear"  # Tools become linear_list_issues, etc.
+    print("  • Connecting to MCP server...")
+    mcp_client = MCPClient(
+        transport_callable=create_mcp_transport
     )
-    mcp_clients.append(linear_mcp)
     
-    # GitHub MCP (optional, requires GITHUB_PAT and GITHUB_MCP_URL)
-    github_mcp = None
-    if GITHUB_PAT and GITHUB_MCP_URL:
-        print("  • Connecting to GitHub MCP...")
-        github_mcp = MCPClient(
-            transport_callable=create_github_mcp_transport,
-            prefix="github"  # Tools become github_list_issues, etc.
-        )
-        mcp_clients.append(github_mcp)
-    
-    # Create agent with all MCP tools
     print("  • Configuring Agent tools...")
-    agent = Agent(model=model, tools=mcp_clients)
+    agent = Agent(model=model, tools=[mcp_client])
     
     print("  ✅ Ready!\n")
     print("=" * 60)
-    print("🚀 Multi-Tool Agent (powered by Strands + Portkey)")
+    print("🚀 Strands Agent (powered by Portkey)")
     print("=" * 60)
-    print("Connected services:")
-    print("  ✅ Linear (project management)")
-    if github_mcp:
-        print("  ✅ GitHub (code & repos)")
-    else:
-        print("  ⏸️  GitHub (set GITHUB_PAT and GITHUB_MCP_URL to enable)")
+    print(f"Connected to: {MCP_SERVER_URL}")
     print("\nType 'quit' or 'exit' to end the session.\n")
     
     try:
@@ -133,12 +98,10 @@ def main():
             except Exception as e:
                 print(f"\n❌ Error: {e}")
     finally:
-        # Properly close all MCP client connections
-        for client in mcp_clients:
-            try:
-                client.stop()
-            except Exception:
-                pass
+        try:
+            mcp_client.stop()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
