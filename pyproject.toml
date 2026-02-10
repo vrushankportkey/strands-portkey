@@ -5,8 +5,9 @@ description = "Strands Agents with Portkey integration example"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "strands-agents>=1.24.0",
-    "strands-agents-tools",
-    "openai",
-    "portkey-ai",
+    "strands-agents==1.24.0",
+    "strands-agents-tools==0.2.19",
+    "openai==2.16.0",
+    "portkey-ai==2.1.0",
+    "mcp==1.26.0",
 ]
